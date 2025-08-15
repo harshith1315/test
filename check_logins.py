@@ -1,81 +1,55 @@
 # check_logins.py
 import gspread
 from oauth2client.service_account import ServiceAccountCredentials
-from datetime import datetime
-import pytz
 import smtplib
 
-# Google Sheets setup
-scope = ["https://spreadsheets.google.com/feeds",
-         "https://www.googleapis.com/auth/drive"]
+# ---------------- Google Sheets Setup ----------------
+scope = [
+    "https://spreadsheets.google.com/feeds",
+    "https://www.googleapis.com/auth/drive"
+]
+
 creds = ServiceAccountCredentials.from_json_keyfile_name("config.json", scope)
 client = gspread.authorize(creds)
+
 SHEET_URL = "https://docs.google.com/spreadsheets/d/1ak8GBZvnj2gBiuj3z-AhjcbRWyuhPSVlnrHG7zOiIFE/edit?usp=sharing"
 sheet = client.open_by_url(SHEET_URL).sheet1
 
-# Email credentials
+# ---------------- Email Setup ----------------
 SENDER_EMAIL = "deeplearing.harshith@gmail.com"
-SENDER_PASS = "tlfk vdit gfvc jnjj"
+SENDER_PASS = "tlfk vdit gfvc jnjj"  # or use environment variable
 
-CUTOFF = "09:30:00"  # time for reminder
-IST = pytz.timezone("Asia/Kolkata")
-
-def send_email(to_email, name, reason):
-    """Send email notification."""
+# ---------------- Functions ----------------
+def send_email(to_email):
+    """Send simple email if login is empty."""
     subject = "Login Reminder"
-    body = f"Hi {name},\n\n{reason}\n\n— Automated Reminder"
+    body = f"Hi ,\n\nYou have not logged in today. Please log in.\n\n— Automated Reminder"
     message = f"Subject: {subject}\n\n{body}"
 
-    with smtplib.SMTP("smtp.gmail.com", 587) as server:
-        server.starttls()
-        server.login(SENDER_EMAIL, SENDER_PASS)
-        server.sendmail(SENDER_EMAIL, to_email, message)
+    server = smtplib.SMTP('smtp.gmail.com', 587)
+    server.starttls()
+    server.login('deeplearning.harshith@gmail.com', 'tlfk vdit gfvc jnjj')
+    server.sendmail('deeplearning.harshith@gmail.com', to_email, message.encode('utf-8'))
+    server.quit()
+    print('Mail sent')
 
-def get_headers():
-    """Get column indices based on header names."""
-    headers = [h.strip().lower() for h in sheet.row_values(1)]
-    header_map = {}
-    try:
-        header_map["email"] = headers.index("email") + 1
-        header_map["login"] = headers.index("login") + 1
-        header_map["logout"] = headers.index("logout") + 1
-    except ValueError as e:
-        raise ValueError(f"Missing expected column in sheet: {e}")
-    return header_map
 
-def check_now():
-    """Check logins and send reminders."""
-    now = datetime.now(IST)
-    hour_min = now.strftime("%H:%M")
-
-    if hour_min == "09:30":
-        reason = f"You have not logged in before {CUTOFF} today. Please log in immediately."
-    elif hour_min == "15:00":
-        reason = "Reminder: You still have not logged in today. Please log in."
-    elif hour_min == "18:00":
-        reason = "Final reminder for today: please log in."
-    else:
-        reason = "You have not logged in yet today. Please log in."
-
+def check_logins():
+    """Check the login column and send email if empty."""
     records = sheet.get_all_records()
-
+    # print(records)
     for row in records:
         email = (row.get("email") or "").strip()
-        name = email.split("@")[0] if email else "Employee"
+        print(email)
         login_time = (row.get("login") or "").strip()
+        print(login_time)
+        name = email.split("@")[0] if email else "Employee"
 
-        if not email:
-            continue
-
-        # Send email if no login or late login
-        if not login_time:
-            send_email(email, name, reason)
-            print(f"Email sent to {name} ({email}) - No login")
-        elif login_time > CUTOFF:
-            send_email(email, name, f"You logged in at {login_time}, which is after {CUTOFF}.")
-            print(f"Email sent to {name} ({email}) - Late login at {login_time}")
+        if login_time is '':
+            send_email(email)
         else:
-            print(f"{name} logged in on time at {login_time}")
+            print(f"{name} has logged in.")
 
+# ---------------- Main ----------------
 if __name__ == "__main__":
-    check_now()
+    check_logins()
