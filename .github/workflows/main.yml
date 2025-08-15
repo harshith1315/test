@@ -1,0 +1,32 @@
+name: Check Google Sheet Logins
+
+on:
+  schedule:
+    - cron: "30 4 * * *"  # 9:30 AM IST
+    - cron: "30 9 * * *"  # 3:00 PM IST
+    - cron: "30 12 * * *" # 6:00 PM IST
+  workflow_dispatch: # Manual trigger
+
+jobs:
+  check-logins:
+    runs-on: ubuntu-latest
+    env:
+      GOOGLE_CREDENTIALS: ${{ secrets.GOOGLE }} # Your secret from GitHub
+
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v3
+
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: "3.10"
+
+      - name: Install dependencies
+        run: |
+          pip install -r requirements.txt
+
+      - name: Run login check
+        run: |
+          echo "$GOOGLE_CREDENTIALS" > config.json
+          python check_logins.py
