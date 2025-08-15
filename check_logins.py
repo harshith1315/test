@@ -7,7 +7,7 @@ import pytz
 import smtplib
 from email.mime.text import MIMEText
 
-# Google Sheets
+# Google Sheets setup
 scope = ["https://spreadsheets.google.com/feeds",
          "https://www.googleapis.com/auth/drive"]
 creds = ServiceAccountCredentials.from_json_keyfile_name("config.json", scope)
@@ -15,14 +15,15 @@ client = gspread.authorize(creds)
 SHEET_URL = "https://docs.google.com/spreadsheets/d/1ak8GBZvnj2gBiuj3z-AhjcbRWyuhPSVlnrHG7zOiIFE/edit?usp=sharing"
 sheet = client.open_by_url(SHEET_URL).sheet1
 
-# Email creds from env (GitHub Secrets will provide these)
-SENDER_EMAIL = "deeplearning,harshith@gmail.com"
+# Email credentials (from GitHub Secrets in Actions)
+SENDER_EMAIL = "deeplearning.harshith@gmail.com"
 SENDER_PASS = "harshith1234"
 
-CUTOFF = "09:30:00"  # used in the email text
+CUTOFF = "09:30:00"  # time for reminder
 IST = pytz.timezone("Asia/Kolkata")
 
 def send_email(to_email, name, reason):
+    """Send email notification."""
     body = f"Hi {name},\n\n{reason}\n\n— Automated Reminder"
     msg = MIMEText(body)
     msg["Subject"] = "Login Reminder"
@@ -35,15 +36,19 @@ def send_email(to_email, name, reason):
         server.sendmail(SENDER_EMAIL, to_email, msg.as_string())
 
 def get_headers():
+    """Get column indices based on header names."""
     headers = [h.strip().lower() for h in sheet.row_values(1)]
-    return {
-        "employee": headers.index("employee") + 1,
-        "email": headers.index("email") + 1,
-        "login": headers.index("login") + 1
-    }
+    header_map = {}
+    try:
+        header_map["email"] = headers.index("email") + 1
+        header_map["login"] = headers.index("login") + 1
+        header_map["logout"] = headers.index("logout") + 1
+    except ValueError as e:
+        raise ValueError(f"Missing expected column in sheet: {e}")
+    return header_map
 
 def check_now():
-    # Decide reason based on time-of-day (09:30, 15:00, 18:00 IST)
+    """Check logins and send reminders."""
     now = datetime.now(IST)
     hour_min = now.strftime("%H:%M")
 
@@ -57,16 +62,17 @@ def check_now():
         reason = "You have not logged in yet today. Please log in."
 
     cols = get_headers()
-    records = sheet.get_all_records()  # dicts with header keys
+    records = sheet.get_all_records()
+    
     for row in records:
-        name = (row.get("employee") or "Employee").strip()
         email = (row.get("email") or "").strip()
+        name = email.split("@")[0] if email else "Employee"
         login_time = (row.get("login") or "").strip()
 
         if not email:
             continue
 
-        # Send if missing OR (optional) later than cutoff
+        # Send email if no login or late login
         if not login_time:
             send_email(email, name, reason)
             print(f"Email sent to {name} ({email}) - No login")
