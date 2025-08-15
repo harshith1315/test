@@ -1,11 +1,9 @@
 # check_logins.py
-import os
 import gspread
 from oauth2client.service_account import ServiceAccountCredentials
 from datetime import datetime
 import pytz
 import smtplib
-from email.mime.text import MIMEText
 
 # Google Sheets setup
 scope = ["https://spreadsheets.google.com/feeds",
@@ -15,7 +13,7 @@ client = gspread.authorize(creds)
 SHEET_URL = "https://docs.google.com/spreadsheets/d/1ak8GBZvnj2gBiuj3z-AhjcbRWyuhPSVlnrHG7zOiIFE/edit?usp=sharing"
 sheet = client.open_by_url(SHEET_URL).sheet1
 
-# Email credentials (from GitHub Secrets in Actions)
+# Email credentials
 SENDER_EMAIL = "deeplearing.harshith@gmail.com"
 SENDER_PASS = "tlfk vdit gfvc jnjj"
 
@@ -24,16 +22,14 @@ IST = pytz.timezone("Asia/Kolkata")
 
 def send_email(to_email, name, reason):
     """Send email notification."""
+    subject = "Login Reminder"
     body = f"Hi {name},\n\n{reason}\n\n— Automated Reminder"
-    msg = MIMEText(body)
-    msg["Subject"] = "Login Reminder"
-    msg["From"] = SENDER_EMAIL
-    msg["To"] = to_email
+    message = f"Subject: {subject}\n\n{body}"
 
     with smtplib.SMTP("smtp.gmail.com", 587) as server:
         server.starttls()
         server.login(SENDER_EMAIL, SENDER_PASS)
-        server.sendmail(SENDER_EMAIL, to_email, msg.as_string())
+        server.sendmail(SENDER_EMAIL, to_email, message)
 
 def get_headers():
     """Get column indices based on header names."""
@@ -61,9 +57,8 @@ def check_now():
     else:
         reason = "You have not logged in yet today. Please log in."
 
-    cols = get_headers()
     records = sheet.get_all_records()
-    
+
     for row in records:
         email = (row.get("email") or "").strip()
         name = email.split("@")[0] if email else "Employee"
@@ -84,5 +79,3 @@ def check_now():
 
 if __name__ == "__main__":
     check_now()
-
-
