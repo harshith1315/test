@@ -16,7 +16,7 @@ SHEET_URL = "https://docs.google.com/spreadsheets/d/1ak8GBZvnj2gBiuj3z-AhjcbRWyu
 sheet = client.open_by_url(SHEET_URL).sheet1
 
 # Email credentials (from GitHub Secrets in Actions)
-SENDER_EMAIL = "deeplearning.harshith@gmail.com"
+SENDER_EMAIL = "kanumuri.harshith@hotmail.com"
 SENDER_PASS = "harshith1234"
 
 CUTOFF = "09:30:00"  # time for reminder
@@ -84,3 +84,4 @@ def check_now():
 
 if __name__ == "__main__":
     check_now()
+
